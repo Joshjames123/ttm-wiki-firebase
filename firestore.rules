@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if hasAnyRole(['admin']);
+    }
+    
+    match /posts/{postID} {
+    	allow read: if hasAnyRole(['pre-release_viewer'])
+    }
+    
+    function isSignedIn() {
+  	return request.auth != null;
+  }
+  
+  function hasAnyRole(roles) {
+  	return isSignedIn()
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(roles)
+  }
+    
+  }
+  
+}
