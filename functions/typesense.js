@@ -12,4 +12,5 @@ let typesense = new Typesense.Client({
   connectionTimeoutSeconds: 2,
 });
 
-export default typesense;
+// export default typesense;
+module.exports = typesense;
