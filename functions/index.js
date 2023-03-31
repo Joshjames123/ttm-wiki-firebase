@@ -92,9 +92,116 @@ var database = admin.database();
 //     const subcollectionData = {
 //       nameSample: "Sample Collection",
 //       ...docData, // add collection data to subcollection data object
-//       ...newData,
 //     };
-//     return newDocRef.set(subcollectionData);
+//     return newDocRef.set({
+//       ...subcollectionData,
+//       ...newData, // add newData properties at the same level as subcollectionData
+//     });
+//   });
+
+// exports.transferData = functions.firestore
+//   .document("TTMDocs/{docId}")
+//   .onCreate(async (snapshot, context) => {
+//     const newData = snapshot.data();
+//     const regionName = newData.regionName;
+//     const region = newData.region;
+//     const countryName = newData.countryName;
+//     let country = newData.country; // declare country as let to modify it later
+//     if (!country && countryName) {
+//       // If countryName is not provided, use country instead
+//       country = countryName;
+//       countryName = null;
+//     }
+//     let docData = {}; // initialize empty object to store collection data
+//     if (newData.docRef) {
+//       const docRef = newData.docRef;
+//       const docSnapshot = await docRef.get();
+//       docData = docSnapshot.data();
+//     }
+//     if (!region && regionName) {
+//       region = regionName;
+//       regionName = null;
+//     }
+//     const ref = database.ref(
+//       "TTMDocsCol/" +
+//         country +
+//         "/" +
+//         (countryName ? countryName + "/" : "") +
+//         region +
+//         "/" +
+//         (regionName ? regionName + "/" : "") +
+//         "/" +
+//         context.params.docId
+//     );
+//     // const subcollectionRef = ref.child("subcollection");
+//     // const newDocRef = subcollectionRef.push();
+//     const subcollectionData = {
+//       nameSample: "Sample Collection",
+//       ...docData, // add collection data to subcollection data object
+//     };
+//     const combinedData = {
+//       children: {
+//         ...subcollectionData, // add subcollectionData nested within subcollection key
+//       },
+//       ...newData, // add newData properties at the top level
+//     };
+//     return ref.set(combinedData);
+//   });
+
+// exports.transferData = functions.firestore
+//   .document("TTMDocs/{docId}")
+//   .onCreate(async (snapshot, context) => {
+//     const newData = snapshot.data();
+//     const regionName = newData.regionName;
+//     const region = newData.region;
+//     const countryName = newData.countryName;
+//     let country = newData.country; // declare country as let to modify it later
+//     if (!country && countryName) {
+//       // If countryName is not provided, use country instead
+//       country = countryName;
+//       countryName = null;
+//     }
+//     let docData = {}; // initialize empty object to store collection data
+//     if (newData.docRef) {
+//       const docRef = newData.docRef;
+//       const docSnapshot = await docRef.get();
+//       docData = docSnapshot.data();
+//       if (docData.parentId === context.params.docId) {
+//         // If parentId and docId are the same, add new collection to docData
+//         docData = {
+//           ...docData,
+//           newCollection: newData.newCollection,
+//         };
+//       }
+//     }
+//     if (!region && regionName) {
+//       region = regionName;
+//       regionName = null;
+//     }
+//     const ref = database.ref(
+//       "TTMDocsCol/" +
+//         country +
+//         "/" +
+//         (countryName ? countryName + "/" : "") +
+//         region +
+//         "/" +
+//         (regionName ? regionName + "/" : "") +
+//         "/" +
+//         context.params.docId
+//     );
+//     // const subcollectionRef = ref.child("subcollection");
+//     // const newDocRef = subcollectionRef.push();
+//     const subcollectionData = {
+//       nameSample: "Sample Collection",
+//       ...docData, // add collection data to subcollection data object
+//     };
+//     const combinedData = {
+//       children: {
+//         ...subcollectionData, // add subcollectionData nested within subcollection key
+//       },
+//       ...newData, // add newData properties at the top level
+//     };
+//     return ref.set(combinedData);
 //   });
 
 exports.transferData = functions.firestore
@@ -116,6 +223,15 @@ exports.transferData = functions.firestore
       const docSnapshot = await docRef.get();
       docData = docSnapshot.data();
     }
+
+    // Fetch subcollection data
+    const subcollectionRef = snapshot.ref.collection("subcollection");
+    const subcollectionSnapshot = await subcollectionRef.get();
+    subcollectionSnapshot.forEach((doc) => {
+      // Add subcollection data to docData
+      docData[doc.id] = doc.data();
+    });
+
     if (!region && regionName) {
       region = regionName;
       regionName = null;
@@ -131,56 +247,18 @@ exports.transferData = functions.firestore
         "/" +
         context.params.docId
     );
-    const subcollectionRef = ref.child("subcollection");
-    const newDocRef = subcollectionRef.push();
     const subcollectionData = {
-      nameSample: "Sample Collection",
+      nameSample: "Sample Collection2",
       ...docData, // add collection data to subcollection data object
     };
-    return newDocRef.set({
-      ...subcollectionData,
-      ...newData, // add newData properties at the same level as subcollectionData
-    });
+    const combinedData = {
+      children: {
+        ...subcollectionData, // add subcollectionData nested within subcollection key
+      },
+      ...newData, // add newData properties at the top level
+    };
+    return ref.set(combinedData);
   });
-
-// exports.transferData = functions.firestore
-//   .document("TTMDocs/{docId}")
-//   .onCreate((snapshot, context) => {
-//     const newData = snapshot.data();
-//     const regionName = newData.regionName;
-//     const region = newData.region;
-//     const countryName = newData.countryName;
-//     const country = newData.country;
-//     if (!country && countryName) {
-//       // If countryName is not provided, use country instead
-//       country = countryName;
-//       countryName = null;
-//     }
-//     if (!region && regionName) {
-//       region = regionName;
-//       regionName = null;
-//     }
-//     const ref = database.ref(
-//       "TTMDocsCol/" +
-//         country +
-//         "/" +
-//         (countryName ? countryName + "/" : "") +
-//         region +
-//         "/" +
-//         (regionName ? regionName + "/" : "") +
-//         "/" +
-//         context.params.docId
-//     );
-
-//     // Add a nested collection
-//     const nestedColRef = ref.collection("nestedCollection");
-//     const nestedDocData = {
-//       Name: "Nested",
-//     };
-//     nestedColRef.add(nestedDocData);
-
-//     return ref.set(newData);
-//   });
 
 ////////////////////////////////////////////////////////////
 // exports.onDocCreate = functions.firestore
