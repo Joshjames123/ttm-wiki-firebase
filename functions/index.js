@@ -224,138 +224,151 @@ var database = admin.database();
 //   });
 
 // adding the value of the new document in the children collection
-// exports.transferData = functions.firestore
-//   .document("TTMDocs/{docId}")
-//   .onCreate(async (snapshot, context) => {
-//     const newData = snapshot.data();
-//     const parentId = newData.parentId;
-//     const docId = context.params.docId;
-//     if (parentId && parentId === docId) {
-//       const parentRef = database.ref("TTMDocsCol/" + parentId);
-//       const parentSnapshot = await parentRef.once("value");
-//       const parentData = parentSnapshot.val();
-//       const children = parentData.children || {}; // get existing children or initialize an empty object
-//       const childData = {
-//         nameSample: "Sample Collection",
-//         ...newData, // add newData properties at the top level
-//       };
-//       children[docId] = childData; // add childData to children object using docId as key
-//       return parentRef.update({ children });
-//     } else {
-//       const regionName = newData.regionName;
-//       const region = newData.region;
-//       const countryName = newData.countryName;
-//       let country = newData.country; // declare country as let to modify it later
-//       if (!country && countryName) {
-//         // If countryName is not provided, use country instead
-//         country = countryName;
-//         countryName = null;
-//       }
-//       let docData = {}; // initialize empty object to store collection data
-//       if (newData.docRef) {
-//         const docRef = newData.docRef;
-//         const docSnapshot = await docRef.get();
-//         docData = docSnapshot.data();
-//       }
-//       if (!region && regionName) {
-//         region = regionName;
-//         regionName = null;
-//       }
-//       const ref = database.ref(
-//         "TTMDocsCol/" +
-//           country +
-//           "/" +
-//           (countryName ? countryName + "/" : "") +
-//           region +
-//           "/" +
-//           (regionName ? regionName + "/" : "") +
-//           "/" +
-//           docId
-//       );
-//       // const subcollectionRef = ref.child("subcollection");
-//       // const newDocRef = subcollectionRef.push();
-//       const subcollectionData = {
-//         nameSample: "Sample Collection1",
-//         ...docData, // add collection data to subcollection data object
-//       };
-//       const combinedData = {
-//         children: {
-//           ...subcollectionData, // add subcollectionData nested within subcollection key
-//         },
-//         ...newData, // add newData properties at the top level
-//       };
-//       return ref.set(combinedData);
-//     }
-//   });
 
 exports.transferData = functions.firestore
   .document("TTMDocs/{docId}")
   .onCreate(async (snapshot, context) => {
-    const newData = snapshot.data();
-    const regionName = newData.regionName;
-    const region = newData.region;
-    const countryName = newData.countryName;
-    let country = newData.country; // declare country as let to modify it later
+    var newData = snapshot.data();
+    var parentId = newData.parentId;
+    var regionName = newData.regionName;
+    var region = newData.region;
+    var parent = newData.parent;
+    var countryName = newData.countryName;
+    var country = newData.country; // declare country as let to modify it later
     if (!country && countryName) {
       // If countryName is not provided, use country instead
       country = countryName;
       countryName = null;
     }
-    let docData = {}; // initialize empty object to store collection data
-    if (newData.docRef) {
-      const docRef = newData.docRef;
-      const docSnapshot = await docRef.get();
-      docData = docSnapshot.data();
-    }
     if (!region && regionName) {
       region = regionName;
       regionName = null;
+      docId;
     }
-    const ref = database.ref(
-      "TTMDocsCol/" +
-        country +
-        "/" +
-        (countryName ? countryName + "/" : "") +
-        region +
-        "/" +
-        (regionName ? regionName + "/" : "") +
-        "/" +
-        context.params.docId
-    );
-    const parentId = newData.parentId;
-    if (parentId && parentId === context.params.docId) {
-      // If parentId matches current docId, add new document to children
-      const parentRef = ref.parent;
-      const parentSnapshot = await parentRef.once("value");
-      const parentData = parentSnapshot.val();
-      if (parentData && parentData.children) {
-        const children = parentData.children;
-        const childId = context.params.docId;
-        const subcollectionData = {
-          nameSample: "Sample Collection",
-          ...docData, // add collection data to subcollection data object
-        };
-        children[childId] = {
-          ...subcollectionData, // add subcollectionData nested within subcollection key
-          ...newData, // add newData properties at the top level
-        };
-        await parentRef.child("children").set(children);
-      }
+    var docId = context.params.docId;
+    var ref;
+
+    if (parent != "root") {
+      // update ref
+      ref = database.ref(
+        "TTMDocsCol/" +
+          country +
+          "/" +
+          region +
+          "/" +
+          parentId +
+          "/" +
+          "children/" +
+          (docId ? docId : "docId-Not-Working")
+      );
+      // return parentRef.update({ children });
     } else {
-      // If parentId doesn't match current docId, add new document to current docId
-      const subcollectionData = {
-        nameSample: "Sample Collection",
-        ...docData, // add collection data to subcollection data object
-      };
-      const combinedData = {
-        children: {
-          ...subcollectionData, // add subcollectionData nested within subcollection key
-        },
-        ...newData, // add newData properties at the top level
-      };
-      await ref.set(combinedData);
+      ref = database.ref(
+        "TTMDocsCol/" +
+          country +
+          "/" +
+          (countryName ? countryName + "/" : "") +
+          region +
+          "/" +
+          (regionName ? regionName + "/" : "") +
+          "/" +
+          docId
+      );
     }
+    var docData = {}; // initialize empty object to store collection data
+    if (newData.docRef) {
+      var docRef = newData.docRef;
+      var docSnapshot = await docRef.get();
+      docData = docSnapshot.data();
+    }
+
+    // const subcollectionRef = ref.child("subcollection");
+    // const newDocRef = subcollectionRef.push();
+    var subcollectionData = {
+      nameSample: "Sample Collection - 1",
+      ...docData, // add collection data to subcollection data object
+    };
+    var combinedData = {
+      longName: newData.longName,
+      shortName: newData.shortName,
+    };
+    return ref.set(combinedData);
   });
+
+// exports.transferData = functions.firestore
+//   .document("TTMDocs/{docId}")
+//   .onCreate(async (snapshot, context) => {
+//     var newData = snapshot.data();
+//     var regionName = newData.regionName;
+//     var region = newData.region;
+//     var countryName = newData.countryName;
+//     let country = newData.country; // declare country as let to modify it later
+//     if (!country && countryName) {
+//       // If countryName is not provided, use country instead
+//       country = countryName;
+//       countryName = null;
+//     }
+//     let docData = {}; // initialize empty object to store collection data
+//     if (newData.docRef) {
+//       var docRef = newData.docRef;
+//       var docSnapshot = await docRef.get();
+//       docData = docSnapshot.data();
+//     }
+//     if (!region && regionName) {
+//       region = regionName;
+//       regionName = null;
+//     }
+//     var ref = database.ref(
+//       "TTMDocsCol/" +
+//         country +
+//         "/" +
+//         (countryName ? countryName + "/" : "") +
+//         region +
+//         "/" +
+//         (regionName ? regionName + "/" : "") +
+//         "/" +
+//         context.params.docId
+//     );
+//     var parentId = newData.parentId;
+//     if (parentId && parentId === context.params.docId) {
+//       // If parentId matches current docId, add new document to children
+//       var parentRef = ref.parent;
+//       console.log("parentRef: ", parentRef);
+//       var parentSnapshot = await parentRef.once("value");
+//       console.log("parentSnapshot: ", parentSnapshot);
+//       var parentData = parentSnapshot.val();
+//       console.log("parentData: ", parentData);
+//       if (parentData && parentData.children) {
+//         var children = parentData.children;
+//         console.log("children: ", children);
+//         var childId = context.params.docId;
+//         console.log("childId: ", childId);
+//         var subcollectionData = {
+//           nameSample: "Sample Collection",
+//           ...docData, // add collection data to subcollection data object
+//         };
+//         console.log("subcollectionData: ", subcollectionData);
+//         children[childId] = {
+//           ...subcollectionData, // add subcollectionData nested within subcollection key
+//           ...newData, // add newData properties at the top level
+//         };
+//         await parentRef.child("children").set(children);
+//       }
+//     } else {
+//       // If parentId doesn't match current docId, add new document to current docId
+//       var subcollectionData = {
+//         nameSample: "Sample Collection1",
+//         ...docData, // add collection data to subcollection data object
+//       };
+//       var combinedData = {
+//         children: {
+//           ...subcollectionData, // add subcollectionData nested within subcollection key
+//         },
+//         ...newData, // add newData properties at the top level
+//       };
+//       await ref.set(combinedData);
+//     }
+//   });
 
 ///////////////////////////////////////////////////////////////
 // exports.onDocCreate = functions.firestore
