@@ -99,6 +99,7 @@ var database = admin.database();
 //     });
 //   });
 
+//This part is working//////////////////////////////////////////////
 // exports.transferData = functions.firestore
 //   .document("TTMDocs/{docId}")
 //   .onCreate(async (snapshot, context) => {
@@ -166,13 +167,6 @@ var database = admin.database();
 //       const docRef = newData.docRef;
 //       const docSnapshot = await docRef.get();
 //       docData = docSnapshot.data();
-//       if (docData.parentId === context.params.docId) {
-//         // If parentId and docId are the same, add new collection to docData
-//         docData = {
-//           ...docData,
-//           newCollection: newData.newCollection,
-//         };
-//       }
 //     }
 //     if (!region && regionName) {
 //       region = regionName;
@@ -189,10 +183,35 @@ var database = admin.database();
 //         "/" +
 //         context.params.docId
 //     );
+
+//     // Check if parentId exists in newData
+//     if (newData.parentId) {
+//       // Query the collection with the same docId and parentId
+//       const querySnapshot = await firestore
+//         .collection("TTMDocs")
+//         .where("docId", "==", newData.docId)
+//         .where("parentId", "==", newData.parentId)
+//         .get();
+
+//       // If there is a document with the same docId and parentId
+//       if (!querySnapshot.empty) {
+//         // Get the first document in the query snapshot
+//         const doc = querySnapshot.docs[0];
+
+//         // Get the subcollection from the existing document and add it to the newData
+//         const subcollectionRef = doc.ref.collection("subcollection");
+//         const subcollectionQuerySnapshot = await subcollectionRef.get();
+//         const subcollectionDocs = subcollectionQuerySnapshot.docs.map(
+//           (subcollectionDoc) => subcollectionDoc.data()
+//         );
+//         newData.subcollection = subcollectionDocs;
+//       }
+//     }
+
 //     // const subcollectionRef = ref.child("subcollection");
 //     // const newDocRef = subcollectionRef.push();
 //     const subcollectionData = {
-//       nameSample: "Sample Collection",
+//       nameSample: "Sample Collection9",
 //       ...docData, // add collection data to subcollection data object
 //     };
 //     const combinedData = {
@@ -202,6 +221,71 @@ var database = admin.database();
 //       ...newData, // add newData properties at the top level
 //     };
 //     return ref.set(combinedData);
+//   });
+
+// adding the value of the new document in the children collection
+// exports.transferData = functions.firestore
+//   .document("TTMDocs/{docId}")
+//   .onCreate(async (snapshot, context) => {
+//     const newData = snapshot.data();
+//     const parentId = newData.parentId;
+//     const docId = context.params.docId;
+//     if (parentId && parentId === docId) {
+//       const parentRef = database.ref("TTMDocsCol/" + parentId);
+//       const parentSnapshot = await parentRef.once("value");
+//       const parentData = parentSnapshot.val();
+//       const children = parentData.children || {}; // get existing children or initialize an empty object
+//       const childData = {
+//         nameSample: "Sample Collection",
+//         ...newData, // add newData properties at the top level
+//       };
+//       children[docId] = childData; // add childData to children object using docId as key
+//       return parentRef.update({ children });
+//     } else {
+//       const regionName = newData.regionName;
+//       const region = newData.region;
+//       const countryName = newData.countryName;
+//       let country = newData.country; // declare country as let to modify it later
+//       if (!country && countryName) {
+//         // If countryName is not provided, use country instead
+//         country = countryName;
+//         countryName = null;
+//       }
+//       let docData = {}; // initialize empty object to store collection data
+//       if (newData.docRef) {
+//         const docRef = newData.docRef;
+//         const docSnapshot = await docRef.get();
+//         docData = docSnapshot.data();
+//       }
+//       if (!region && regionName) {
+//         region = regionName;
+//         regionName = null;
+//       }
+//       const ref = database.ref(
+//         "TTMDocsCol/" +
+//           country +
+//           "/" +
+//           (countryName ? countryName + "/" : "") +
+//           region +
+//           "/" +
+//           (regionName ? regionName + "/" : "") +
+//           "/" +
+//           docId
+//       );
+//       // const subcollectionRef = ref.child("subcollection");
+//       // const newDocRef = subcollectionRef.push();
+//       const subcollectionData = {
+//         nameSample: "Sample Collection1",
+//         ...docData, // add collection data to subcollection data object
+//       };
+//       const combinedData = {
+//         children: {
+//           ...subcollectionData, // add subcollectionData nested within subcollection key
+//         },
+//         ...newData, // add newData properties at the top level
+//       };
+//       return ref.set(combinedData);
+//     }
 //   });
 
 exports.transferData = functions.firestore
@@ -223,15 +307,6 @@ exports.transferData = functions.firestore
       const docSnapshot = await docRef.get();
       docData = docSnapshot.data();
     }
-
-    // Fetch subcollection data
-    const subcollectionRef = snapshot.ref.collection("subcollection");
-    const subcollectionSnapshot = await subcollectionRef.get();
-    subcollectionSnapshot.forEach((doc) => {
-      // Add subcollection data to docData
-      docData[doc.id] = doc.data();
-    });
-
     if (!region && regionName) {
       region = regionName;
       regionName = null;
@@ -247,20 +322,42 @@ exports.transferData = functions.firestore
         "/" +
         context.params.docId
     );
-    const subcollectionData = {
-      nameSample: "Sample Collection2",
-      ...docData, // add collection data to subcollection data object
-    };
-    const combinedData = {
-      children: {
-        ...subcollectionData, // add subcollectionData nested within subcollection key
-      },
-      ...newData, // add newData properties at the top level
-    };
-    return ref.set(combinedData);
+    const parentId = newData.parentId;
+    if (parentId && parentId === context.params.docId) {
+      // If parentId matches current docId, add new document to children
+      const parentRef = ref.parent;
+      const parentSnapshot = await parentRef.once("value");
+      const parentData = parentSnapshot.val();
+      if (parentData && parentData.children) {
+        const children = parentData.children;
+        const childId = context.params.docId;
+        const subcollectionData = {
+          nameSample: "Sample Collection",
+          ...docData, // add collection data to subcollection data object
+        };
+        children[childId] = {
+          ...subcollectionData, // add subcollectionData nested within subcollection key
+          ...newData, // add newData properties at the top level
+        };
+        await parentRef.child("children").set(children);
+      }
+    } else {
+      // If parentId doesn't match current docId, add new document to current docId
+      const subcollectionData = {
+        nameSample: "Sample Collection",
+        ...docData, // add collection data to subcollection data object
+      };
+      const combinedData = {
+        children: {
+          ...subcollectionData, // add subcollectionData nested within subcollection key
+        },
+        ...newData, // add newData properties at the top level
+      };
+      await ref.set(combinedData);
+    }
   });
 
-////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
 // exports.onDocCreate = functions.firestore
 //   .document("TTMDocs/{Doc_name}")
 //   .onCreate(async (snap, context) => {
